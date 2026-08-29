@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Blasher - basic firmware flasher</title>
+  <meta
+    name="description"
+    content="Browser based STM32 UART bootloader flasher for the Blasher USB breakout."
+  />
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <div>
+      <h1>Blasher</h1>
+      <p class="tagline">Basic firmware flasher - STM32 UART bootloader</p>
+    </div>
+  </div>
+  <div class="conn" id="connStatus" data-state="idle">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="connText">Not connected</span>
+  </div>
+</header>
+
+<main>
+  <div id="unsupported" class="banner error" hidden>
+    <strong>This browser cannot talk to serial devices.</strong>
+    Blasher needs the Web Serial API - use desktop Chrome, Edge, or Opera
+    over <code>https://</code> or <code>http://localhost</code>.
+  </div>
+
+  <section class="card" id="cardDevice">
+    <div class="card-head">
+      <span class="step">1</span>
+      <h2>Blasher device</h2>
+    </div>
+    <p class="hint">
+      Plug the Blasher into USB and connect the 5-pin breakout to the
+      target. The target must be powered separately.
+    </p>
+    <div class="row">
+      <button id="btnConnect" class="primary">Connect</button>
+      <button id="btnDisconnect" class="ghost" disabled>Disconnect</button>
+      <label class="check">
+        <input type="checkbox" id="chkAnyPort"/>
+        Show all serial ports (not just CP2102N)
+      </label>
+    </div>
+    <dl class="facts" id="deviceFacts" hidden>
+      <div>
+        <dt>Port</dt>
+        <dd id="factPort">-</dd>
+      </div>
+      <div>
+        <dt>Target</dt>
+        <dd id="factTarget">-</dd>
+      </div>
+      <div>
+        <dt>Bootloader</dt>
+        <dd id="factBootloader">-</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="card" id="cardFirmware">
+    <div class="card-head">
+      <span class="step">2</span>
+      <h2>Firmware image</h2>
+    </div>
+    <label class="drop" id="dropZone" for="fileInput">
+      <input type="file" id="fileInput" accept=".bin" hidden/>
+      <span class="drop-title">Drop a <code>.bin</code> here</span>
+      <span class="drop-sub">or click to browse</span>
+    </label>
+    <dl class="facts" id="fileFacts" hidden>
+      <div>
+        <dt>File</dt>
+        <dd id="factName">-</dd>
+      </div>
+      <div>
+        <dt>Size</dt>
+        <dd id="factSize">-</dd>
+      </div>
+      <div>
+        <dt>CRC32</dt>
+        <dd id="factCrc">-</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="card" id="cardFlash">
+    <div class="card-head">
+      <span class="step">3</span>
+      <h2>Flash</h2>
+    </div>
+    <div class="row options">
+      <label class="check">
+        <input type="checkbox" id="optErase" checked/> Mass erase first
+      </label>
+      <label class="check">
+        <input type="checkbox" id="optVerify" checked/> Verify after write
+      </label>
+      <label class="check">
+        <input type="checkbox" id="optRun" checked/> Run application when
+        done
+      </label>
+    </div>
+    <div class="row">
+      <button id="btnFlash" class="primary big" disabled>
+        Flash firmware
+      </button>
+      <button id="btnAbort" class="ghost" disabled>Abort</button>
+    </div>
+    <div class="progress" id="progressWrap" hidden>
+      <div class="bar">
+        <div class="fill" id="progressFill"></div>
+      </div>
+      <div class="progress-meta">
+        <span id="progressPhase">Idle</span>
+        <span id="progressPct">0%</span>
+      </div>
+    </div>
+  </section>
+
+  <details class="card advanced" id="advanced">
+    <summary><h2>Advanced settings</h2></summary>
+
+    <h3>Serial &amp; memory</h3>
+    <div class="grid">
+      <label>
+        Baud rate
+        <input type="number" id="cfgBaud" value="115200" min="1200" step="1"/>
+      </label>
+      <label>
+        Parity
+        <select id="cfgParity">
+          <option value="even" selected>even (8E1, per AN3155)</option>
+          <option value="none">none (8N1)</option>
+        </select>
+      </label>
+      <label>
+        Flash base address
+        <input type="text" id="cfgBase" value="0x08000000"/>
+      </label>
+      <label>
+        ACK timeout (ms)
+        <input type="number" id="cfgAckTimeout" value="2000" min="100"/>
+      </label>
+      <label>
+        Erase timeout (ms)
+        <input type="number" id="cfgEraseTimeout" value="40000" min="1000"/>
+      </label>
+    </div>
+
+    <h3>Boot control lines</h3>
+    <p class="hint">
+      BOOT0 is pin 4 and NRESET is pin 5 on the breakout. Invert a line if
+      your board buffers it. Use the line tests below to confirm with a
+      meter before flashing an unknown board.
+    </p>
+    <div class="grid">
+      <label>
+        NRESET line
+        <select id="cfgNrstLine">
+          <option value="rts" selected>RTS</option>
+          <option value="dtr">DTR</option>
+        </select>
+      </label>
+      <label class="check inline">
+        <input type="checkbox" id="cfgNrstInvert" checked/>
+        Invert NRESET
+      </label>
+      <label>
+        BOOT0 line
+        <select id="cfgBoot0Line">
+          <option value="dtr" selected>DTR</option>
+          <option value="rts">RTS</option>
+        </select>
+      </label>
+      <label class="check inline">
+        <input type="checkbox" id="cfgBoot0Invert"/>
+        Invert BOOT0
+      </label>
+      <label>
+        Reset hold (ms)
+        <input type="number" id="cfgResetHold" value="50" min="1"/>
+      </label>
+      <label>
+        Boot settle (ms)
+        <input type="number" id="cfgBootDelay" value="150" min="1"/>
+      </label>
+    </div>
+    <div class="row">
+      <button id="btnAssertBoot0" class="ghost" disabled>
+        Assert BOOT0
+      </button>
+      <button id="btnReleaseLines" class="ghost" disabled>
+        Release lines
+      </button>
+      <button id="btnPulseReset" class="ghost" disabled>
+        Pulse NRESET
+      </button>
+      <button id="btnProbe" class="ghost" disabled>Probe target</button>
+    </div>
+  </details>
+
+  <section class="card log-card">
+    <div class="card-head">
+      <h2>Log</h2>
+      <button id="btnClearLog" class="ghost small">Clear</button>
+    </div>
+    <pre id="log" class="log" aria-live="polite"></pre>
+  </section>
+</main>
+
+<footer>
+      <span
+      >Protocol: ST AN3155 USART bootloader | Transport: Web Serial |
+        Companion to
+        <a href="https://github.com/scalpelspace/pyblasher">pyblasher</a></span
+      >
+</footer>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
