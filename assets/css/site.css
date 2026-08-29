@@ -127,7 +127,7 @@ img {
 code {
   font-family: var(--font-mono);
   font-size: 0.875em;
-  background: var(--bg);
+  background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: 5px;
   padding: 0.1em 0.4em;
@@ -274,7 +274,7 @@ main {
 }
 
 .page-head {
-  padding: clamp(40px, 7vh, 68px) 0 4px;
+  padding: clamp(48px, 9vh, 80px) 0 8px;
 }
 
 .page-head h1 {
@@ -430,6 +430,7 @@ button:disabled {
 
 button.primary {
   background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
+  background-origin: border-box;
   border-color: transparent;
   color: #ffffff;
   font-weight: 600;
@@ -748,6 +749,20 @@ input[type="number"] {
   button.big {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/*
+ * A 3-column grid splits evenly instead, which keeps tap targets at a usable
+ * size rather than shrinking type to fit.
+ */
+@media (max-width: 480px) {
+  .site-nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    justify-items: center;
+    width: 100%;
+    gap: 2px;
   }
 }
 
