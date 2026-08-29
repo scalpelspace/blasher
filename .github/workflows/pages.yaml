@@ -1,0 +1,92 @@
+################################################################################
+# pages.yaml
+#
+# Publish the Blasher web flasher to GitHub Pages.
+#
+# The site is plain static files at the repository root (index.html, styles.css,
+# src/) with no build step.
+################################################################################
+
+name: Pages
+
+on:
+  push:
+    paths:
+      - "index.html"
+      - "styles.css"
+      - "src/**"
+      - ".github/workflows/pages.yaml"
+    branches:
+      - main
+  pull_request:
+    paths:
+      - "index.html"
+      - "styles.css"
+      - "src/**"
+      - ".github/workflows/pages.yaml"
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it part-way.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Check the app for syntax errors
+        run: |
+          # src/*.js are ES modules, but `node --check` parses a .js file as
+          # CommonJS, so check copies renamed to .mjs, which is unambiguously
+          # an ES module on every Node version.
+          for file in src/*.js; do
+            copy="$RUNNER_TEMP/$(basename "${file%.js}").mjs"
+            cp "$file" "$copy"
+            node --check "$copy"
+            echo "ok: $file"
+          done
+        shell: bash
+
+      - name: Stage the site
+        run: |
+          mkdir _site
+          cp index.html styles.css _site/
+          cp -r src _site/
+        shell: bash
+
+      - name: Upload the artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  # Pull requests build and test but do not publish.
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
