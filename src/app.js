@@ -39,6 +39,7 @@ const els = {
   btnReleaseLines: $("btnReleaseLines"),
   btnPulseReset: $("btnPulseReset"),
   btnProbe: $("btnProbe"),
+  btnResetSettings: $("btnResetSettings"),
   btnClearLog: $("btnClearLog"),
   log: $("log"),
 };
@@ -140,6 +141,52 @@ function loadSettings() {
     if (!el) continue;
     if (el.type === "checkbox") el.checked = Boolean(value); else el.value = value;
   }
+}
+
+/**
+ * Restore the advanced fields to the defaults written in index.html, then drop
+ * just those keys from storage. Deleting rather than re-saving them means a
+ * later change to a default reaches this browser instead of staying masked by
+ * a saved copy of the old one.
+ *
+ * The flash options are deliberately untouched: they sit in plain view on the
+ * page, so unlike the settings behind the collapsed panel they never get stuck
+ * somewhere the user cannot see them.
+ */
+function resetSettings() {
+  for (const id of CONFIG_FIELDS) {
+    const el = els[id];
+    if (el.type === "checkbox") {
+      el.checked = el.defaultChecked;
+    } else if (el.tagName === "SELECT") {
+      const fallback = el.querySelector("option[selected]") || el.options[0];
+      el.value = fallback.value;
+    } else {
+      el.value = el.defaultValue;
+    }
+  }
+
+  let data = {};
+  try {
+    data = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") || {};
+  } catch {
+    data = {};
+  }
+  for (const id of CONFIG_FIELDS) delete data[id];
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+  } catch {
+    /* private mode: nothing was persisted to begin with */
+  }
+
+  // Keep an open connection consistent with what the form now shows.
+  if (state.target) state.target.pins = readPins();
+  if (state.bl) {
+    const cfg = readConfig();
+    state.bl.ackTimeout = cfg.ackTimeout;
+    state.bl.eraseTimeout = cfg.eraseTimeout;
+  }
+  log("Advanced settings reset to defaults", "ok");
 }
 
 /* ----------------------------------------------------------------- ui ---- */
@@ -401,6 +448,7 @@ function wire() {
     state.abort = true;
     log("Abort requested - finishing current block", "warn");
   });
+  els.btnResetSettings.addEventListener("click", resetSettings);
   els.btnClearLog.addEventListener("click", () => {
     els.log.textContent = "";
   });

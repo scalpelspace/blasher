@@ -627,6 +627,21 @@ button.small {
   color: var(--text-muted);
 }
 
+/*
+ * Separated from the line tests above it: those act on the hardware, this one
+ * only rewrites the form.
+ */
+.reset-row {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.reset-hint {
+  margin: 0;
+  flex: 1 1 260px;
+}
+
 .grid label.inline {
   flex-direction: row;
   align-items: center;

@@ -228,11 +228,11 @@
         </label>
         <label>
           Reset hold (ms)
-          <input type="number" id="cfgResetHold" value="50" min="1">
+          <input type="number" id="cfgResetHold" value="20" min="1">
         </label>
         <label>
           Boot settle (ms)
-          <input type="number" id="cfgBootDelay" value="150" min="1">
+          <input type="number" id="cfgBootDelay" value="50" min="1">
         </label>
       </div>
       <div class="row">
@@ -241,6 +241,14 @@
         </button>
         <button id="btnPulseReset" class="ghost" disabled>Pulse NRESET</button>
         <button id="btnProbe" class="ghost" disabled>Probe target</button>
+      </div>
+
+      <div class="row reset-row">
+        <button id="btnResetSettings" class="ghost">Reset to defaults</button>
+        <span class="hint reset-hint">
+          Restores every field above and forgets the copy saved in this
+          browser.
+        </span>
       </div>
     </details>
 

@@ -17,8 +17,8 @@ export const DEFAULT_PINS = {
   nrstInvert: true, // asserting reset drives the signal false
   boot0Line: "dtr", // "rts" | "dtr"
   boot0Invert: false, // asserting BOOT0 drives the signal true
-  resetHoldMs: 50, // how long NRST is held asserted
-  bootDelayMs: 150, // settle time after reset release before the sync byte
+  resetHoldMs: 20, // how long NRST is held asserted
+  bootDelayMs: 50, // settle time after reset release before the sync byte
 };
 
 const signalName = (line) => line === "rts" ? "requestToSend" : "dataTerminalReady";
