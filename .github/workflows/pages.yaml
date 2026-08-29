@@ -13,16 +13,16 @@ on:
   push:
     paths:
       - "index.html"
-      - "styles.css"
       - "src/**"
+      - "assets/**"
       - ".github/workflows/pages.yaml"
     branches:
       - main
   pull_request:
     paths:
       - "index.html"
-      - "styles.css"
       - "src/**"
+      - "assets/**"
       - ".github/workflows/pages.yaml"
     branches:
       - main
@@ -67,8 +67,8 @@ jobs:
       - name: Stage the site
         run: |
           mkdir _site
-          cp index.html styles.css _site/
-          cp -r src _site/
+          cp index.html _site/
+          cp -r src assets _site/
         shell: bash
 
       - name: Upload the artifact
