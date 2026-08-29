@@ -34,11 +34,22 @@
       <img src="/assets/img/favicon-512x512.png" alt="" width="28" height="28">
       ScalpelSpace
     </a>
+    <!--
+      Mirrors the nav on scalpelspace.com exactly, in the same order and with
+      the same arrow markers, so the cross-domain hop to this subdomain reads
+      as a page change rather than a different site. Products and About are a
+      different origin from here but are deliberately not marked .ext: adding
+      arrows they do not have on the parent site is precisely the difference a
+      visitor would notice. Blasher drops its own arrow and takes the current
+      page highlight instead.
+    -->
     <nav class="site-nav" aria-label="Primary">
-      <a class="ext" href="https://scalpelspace.com/products.html">Products</a>
+      <a href="https://scalpelspace.com/products.html">Products</a>
+      <a href="https://scalpelspace.com/about.html">About</a>
       <a class="ext" href="https://docs.scalpelspace.com/">Docs</a>
+      <a href="/" aria-current="page">Blasher</a>
       <a class="ext" href="https://shop.scalpelspace.com/">Shop</a>
-      <a class="ext" href="https://github.com/scalpelspace/blasher">GitHub</a>
+      <a class="ext" href="https://github.com/scalpelspace">GitHub</a>
     </nav>
   </div>
 </header>
@@ -248,10 +259,11 @@
     <span>&copy; 2026 ScalpelSpace</span>
     <nav class="footer-links" aria-label="Footer">
       <a href="https://scalpelspace.com/products.html">Products</a>
+      <a href="https://scalpelspace.com/about.html">About</a>
       <a href="https://docs.scalpelspace.com/">Docs</a>
+      <a href="/">Blasher</a>
       <a href="https://shop.scalpelspace.com/">Shop</a>
-      <a href="https://github.com/scalpelspace/blasher">GitHub</a>
-      <a href="https://github.com/scalpelspace/pyblasher">pyblasher</a>
+      <a href="https://github.com/scalpelspace">GitHub</a>
     </nav>
   </div>
 </footer>

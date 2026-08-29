@@ -239,6 +239,16 @@ code {
   text-decoration: none;
 }
 
+/*
+ * Marks the tab you are on. Blasher is a separate origin from the rest of the
+ * site, so the highlight is what tells you the cross-domain hop landed where
+ * you expected.
+ */
+.site-nav a[aria-current="page"] {
+  color: var(--text);
+  background: var(--bg-raised);
+}
+
 .site-nav .ext::after {
   content: "\2197";
   font-size: 0.75em;
