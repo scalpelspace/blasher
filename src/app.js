@@ -293,15 +293,13 @@ const framingLabel = (parity) => (parity === "even" ? "8E1" : "8N1");
 
 function monitorSettings() {
   return {
-    baudRate: Number(els.monBaud.value) || 115200,
-    parity: els.monFraming.value,
+    baudRate: Number(els.monBaud.value) || 115200, parity: els.monFraming.value,
   };
 }
 
 function flashSettings() {
   return {
-    baudRate: Number(els.cfgBaud.value) || 115200,
-    parity: els.cfgParity.value,
+    baudRate: Number(els.cfgBaud.value) || 115200, parity: els.cfgParity.value,
   };
 }
 
@@ -572,8 +570,7 @@ async function flash() {
   try {
     setPhase("Entering bootloader");
     await ensurePort({
-      baudRate: cfg.baudRate,
-      parity: cfg.parity
+      baudRate: cfg.baudRate, parity: cfg.parity
     }, "the bootloader");
     await state.target.enterBootloader();
     await state.bl.sync();
