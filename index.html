@@ -108,149 +108,242 @@
       </dl>
     </section>
 
-    <section class="card" id="cardFirmware">
-      <div class="card-head">
-        <span class="step">2</span>
-        <h2>Firmware image</h2>
-      </div>
-      <label class="drop" id="dropZone" for="fileInput">
-        <input type="file" id="fileInput" accept=".bin" hidden>
-        <span class="drop-title">Drop a <code>.bin</code> here</span>
-        <span class="drop-sub">or click to browse</span>
-      </label>
-      <dl class="facts" id="fileFacts" hidden>
-        <div>
-          <dt>File</dt>
-          <dd id="factName">-</dd>
-        </div>
-        <div>
-          <dt>Size</dt>
-          <dd id="factSize">-</dd>
-        </div>
-        <div>
-          <dt>CRC32</dt>
-          <dd id="factCrc">-</dd>
-        </div>
-      </dl>
-    </section>
+    <div class="tabs" role="tablist" aria-label="Tool">
+      <button class="tab" id="tabFlash" role="tab" aria-controls="panelFlash"
+              aria-selected="true">Firmware flash
+      </button>
+      <button class="tab" id="tabSerial" role="tab" aria-controls="panelSerial"
+              aria-selected="false">Serial monitor
+      </button>
+    </div>
 
-    <section class="card" id="cardFlash">
-      <div class="card-head">
-        <span class="step">3</span>
-        <h2>Flash</h2>
-      </div>
-      <div class="row options">
-        <label class="check">
-          <input type="checkbox" id="optErase" checked> Mass erase first
-        </label>
-        <label class="check">
-          <input type="checkbox" id="optVerify" checked> Verify after write
-        </label>
-        <label class="check">
-          <input type="checkbox" id="optRun" checked> Run application when done
-        </label>
-      </div>
-      <div class="row">
-        <button id="btnFlash" class="primary big" disabled>
-          Flash firmware
-        </button>
-        <button id="btnAbort" class="ghost" disabled>Abort</button>
-      </div>
-      <div class="progress" id="progressWrap" hidden>
-        <div class="bar">
-          <div class="fill" id="progressFill"></div>
+    <div class="panel" id="panelFlash" role="tabpanel"
+         aria-labelledby="tabFlash">
+      <section class="card" id="cardFirmware">
+        <div class="card-head">
+          <span class="step">2</span>
+          <h2>Firmware image</h2>
         </div>
-        <div class="progress-meta">
-          <span id="progressPhase">Idle</span>
-          <span id="progressPct">0%</span>
+        <label class="drop" id="dropZone" for="fileInput">
+          <input type="file" id="fileInput" accept=".bin" hidden>
+          <span class="drop-title">Drop a <code>.bin</code> here</span>
+          <span class="drop-sub">or click to browse</span>
+        </label>
+        <dl class="facts" id="fileFacts" hidden>
+          <div>
+            <dt>File</dt>
+            <dd id="factName">-</dd>
+          </div>
+          <div>
+            <dt>Size</dt>
+            <dd id="factSize">-</dd>
+          </div>
+          <div>
+            <dt>CRC32</dt>
+            <dd id="factCrc">-</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card" id="cardFlash">
+        <div class="card-head">
+          <span class="step">3</span>
+          <h2>Flash</h2>
         </div>
-      </div>
-    </section>
+        <div class="row options">
+          <label class="check">
+            <input type="checkbox" id="optErase" checked> Mass erase first
+          </label>
+          <label class="check">
+            <input type="checkbox" id="optVerify" checked> Verify after write
+          </label>
+          <label class="check">
+            <input type="checkbox" id="optRun" checked> Run application when
+            done
+          </label>
+        </div>
+        <div class="row">
+          <button id="btnFlash" class="primary big" disabled>
+            Flash firmware
+          </button>
+          <button id="btnAbort" class="ghost" disabled>Abort</button>
+        </div>
+        <div class="progress" id="progressWrap" hidden>
+          <div class="bar">
+            <div class="fill" id="progressFill"></div>
+          </div>
+          <div class="progress-meta">
+            <span id="progressPhase">Idle</span>
+            <span id="progressPct">0%</span>
+          </div>
+        </div>
+      </section>
 
-    <details class="card advanced" id="advanced">
-      <summary><h2>Advanced settings</h2></summary>
+      <details class="card advanced" id="advanced">
+        <summary><h2>Advanced settings</h2></summary>
 
-      <h3>Serial &amp; memory</h3>
-      <div class="grid">
-        <label>
-          Baud rate
-          <input type="number" id="cfgBaud" value="115200" min="1200" step="1">
-        </label>
-        <label>
-          Parity
-          <select id="cfgParity">
-            <option value="even" selected>even (8E1, per AN3155)</option>
-            <option value="none">none (8N1)</option>
-          </select>
-        </label>
-        <label>
-          Flash base address
-          <input type="text" id="cfgBase" value="0x08000000">
-        </label>
-        <label>
-          ACK timeout (ms)
-          <input type="number" id="cfgAckTimeout" value="2000" min="100">
-        </label>
-        <label>
-          Erase timeout (ms)
-          <input type="number" id="cfgEraseTimeout" value="40000" min="1000">
-        </label>
-      </div>
+        <h3>Serial &amp; memory</h3>
+        <div class="grid">
+          <label>
+            Baud rate
+            <input type="number" id="cfgBaud" value="115200" min="1200"
+                   step="1">
+          </label>
+          <label>
+            Parity
+            <select id="cfgParity">
+              <option value="even" selected>even (8E1, per AN3155)</option>
+              <option value="none">none (8N1)</option>
+            </select>
+          </label>
+          <label>
+            Flash base address
+            <input type="text" id="cfgBase" value="0x08000000">
+          </label>
+          <label>
+            ACK timeout (ms)
+            <input type="number" id="cfgAckTimeout" value="2000" min="100">
+          </label>
+          <label>
+            Erase timeout (ms)
+            <input type="number" id="cfgEraseTimeout" value="40000" min="1000">
+          </label>
+        </div>
 
-      <h3>Boot control lines</h3>
-      <p class="hint">
-        BOOT0 is pin 4 and NRESET is pin 5 on the breakout. Invert a line if
-        your board buffers it. Use the line tests below to confirm with a
-        meter before flashing an unknown board.
-      </p>
-      <div class="grid">
-        <label>
-          NRESET line
-          <select id="cfgNrstLine">
-            <option value="rts" selected>RTS</option>
-            <option value="dtr">DTR</option>
-          </select>
-        </label>
-        <label class="check inline">
-          <input type="checkbox" id="cfgNrstInvert" checked>
-          Invert NRESET
-        </label>
-        <label>
-          BOOT0 line
-          <select id="cfgBoot0Line">
-            <option value="dtr" selected>DTR</option>
-            <option value="rts">RTS</option>
-          </select>
-        </label>
-        <label class="check inline">
-          <input type="checkbox" id="cfgBoot0Invert">
-          Invert BOOT0
-        </label>
-        <label>
-          Reset hold (ms)
-          <input type="number" id="cfgResetHold" value="20" min="1">
-        </label>
-        <label>
-          Boot settle (ms)
-          <input type="number" id="cfgBootDelay" value="50" min="1">
-        </label>
-      </div>
-      <div class="row">
-        <button id="btnAssertBoot0" class="ghost" disabled>Assert BOOT0</button>
-        <button id="btnReleaseLines" class="ghost" disabled>Release lines
-        </button>
-        <button id="btnPulseReset" class="ghost" disabled>Pulse NRESET</button>
-        <button id="btnProbe" class="ghost" disabled>Probe target</button>
-      </div>
+        <h3>Boot control lines</h3>
+        <p class="hint">
+          BOOT0 is pin 4 and NRESET is pin 5 on the breakout. Invert a line if
+          your board buffers it. Use the line tests below to confirm with a
+          meter before flashing an unknown board.
+        </p>
+        <div class="grid">
+          <label>
+            NRESET line
+            <select id="cfgNrstLine">
+              <option value="rts" selected>RTS</option>
+              <option value="dtr">DTR</option>
+            </select>
+          </label>
+          <label class="check inline">
+            <input type="checkbox" id="cfgNrstInvert" checked>
+            Invert NRESET
+          </label>
+          <label>
+            BOOT0 line
+            <select id="cfgBoot0Line">
+              <option value="dtr" selected>DTR</option>
+              <option value="rts">RTS</option>
+            </select>
+          </label>
+          <label class="check inline">
+            <input type="checkbox" id="cfgBoot0Invert">
+            Invert BOOT0
+          </label>
+          <label>
+            Reset hold (ms)
+            <input type="number" id="cfgResetHold" value="20" min="1">
+          </label>
+          <label>
+            Boot settle (ms)
+            <input type="number" id="cfgBootDelay" value="50" min="1">
+          </label>
+        </div>
+        <div class="row">
+          <button id="btnAssertBoot0" class="ghost" disabled>Assert BOOT0
+          </button>
+          <button id="btnReleaseLines" class="ghost" disabled>Release lines
+          </button>
+          <button id="btnPulseReset" class="ghost" disabled>Pulse NRESET
+          </button>
+          <button id="btnProbe" class="ghost" disabled>Probe target</button>
+        </div>
 
-      <div class="row reset-row">
-        <button id="btnResetSettings" class="ghost">Reset to defaults</button>
-        <span class="hint reset-hint">
-          Restores every field above and forgets the copy saved in this
-          browser.
-        </span>
-      </div>
-    </details>
+        <div class="row reset-row">
+          <button id="btnResetSettings" class="ghost">Reset to defaults</button>
+          <span class="hint reset-hint">
+            Restores every field above and forgets the copy saved in this
+            browser.
+          </span>
+        </div>
+      </details>
+    </div>
+
+    <div class="panel" id="panelSerial" role="tabpanel"
+         aria-labelledby="tabSerial" hidden>
+      <section class="card" id="cardSerial">
+        <div class="card-head">
+          <h2>Serial monitor</h2>
+          <span class="conn push-end" id="monPortState" data-state="idle">
+            <span class="dot" aria-hidden="true"></span>
+            <span id="monPortText">Port closed</span>
+          </span>
+        </div>
+        <p class="hint">
+          A plain terminal on the same USART1 pins the flasher uses. Opening
+          the port toggles DTR/RTS, which resets the target through the
+          AC-coupled NRESET line, so you will normally see it boot from the
+          start.
+        </p>
+
+        <div class="grid">
+          <label>
+            Baud rate
+            <input type="number" id="monBaud" value="115200" min="1200"
+                   step="1">
+          </label>
+          <label>
+            Framing
+            <select id="monFraming">
+              <option value="none" selected>8N1 (application)</option>
+              <option value="even">8E1 (bootloader)</option>
+            </select>
+          </label>
+          <label>
+            Send line ending
+            <select id="monLineEnding">
+              <option value="lf" selected>LF (\n)</option>
+              <option value="crlf">CRLF (\r\n)</option>
+              <option value="cr">CR (\r)</option>
+              <option value="none">None</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row options">
+          <label class="check">
+            <input type="checkbox" id="monEcho" checked> Echo sent bytes
+          </label>
+          <label class="check">
+            <input type="checkbox" id="monTimestamps"> Timestamps
+          </label>
+          <label class="check">
+            <input type="checkbox" id="monHex"> Hex view
+          </label>
+          <label class="check">
+            <input type="checkbox" id="monAutoscroll" checked> Autoscroll
+          </label>
+        </div>
+
+        <pre id="serialOut" class="log serial-out" aria-live="polite"
+             aria-label="Serial output"></pre>
+
+        <div class="row send-row">
+          <input type="text" id="monInput" class="send-input"
+                 placeholder="Type a line and press Enter" autocomplete="off"
+                 spellcheck="false" disabled>
+          <button id="btnMonSend" class="primary" disabled>Send</button>
+          <label class="check">
+            <input type="checkbox" id="monSendHex"> Send as hex
+          </label>
+        </div>
+
+        <div class="row monitor-actions">
+          <button id="btnMonReset" class="ghost" disabled>Reset target</button>
+          <button id="btnMonClear" class="ghost">Clear output</button>
+          <span class="hint monitor-stats" id="monStats">0 B in, 0 B out</span>
+        </div>
+      </section>
+    </div>
 
     <section class="card log-card">
       <div class="card-head">

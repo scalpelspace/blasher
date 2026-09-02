@@ -44,6 +44,13 @@ export class SerialTransport {
     this._wake = null;
     this._pumpError = null;
     this._draining = false;
+    /*
+     * When set, incoming bytes go straight to this callback and are NOT
+     * buffered for read(). The bootloader and the serial monitor are mutually
+     * exclusive readers: whichever owns the stream must own all of it, or the
+     * monitor would swallow ACKs mid-flash.
+     */
+    this.onData = null;
   }
 
   get isOpen() {
@@ -63,7 +70,22 @@ export class SerialTransport {
     this.writer = this.port.writable.getWriter();
     this._buf = new Uint8Array(0);
     this._pumpError = null;
+    this._draining = false;
     this._pump();
+  }
+
+  /**
+   * Close and reopen the same port with new framing. Web Serial cannot change
+   * baud or parity on an open port, and the flasher (8E1, per AN3155) and a
+   * typical application console (8N1) rarely agree. Reusing this instance
+   * keeps every existing reference to the transport valid.
+   *
+   * Note this re-opens the port, which on a CP2102N toggles DTR/RTS and so
+   * resets the target through the AC-coupled NRESET line.
+   */
+  async reopen(options) {
+    await this.close();
+    await this.open(options);
   }
 
   async close() {
@@ -95,6 +117,10 @@ export class SerialTransport {
         const {value, done} = await this.reader.read();
         if (done) break;
         if (value && value.length) {
+          if (this.onData) {
+            this.onData(value);
+            continue;
+          }
           const merged = new Uint8Array(this._buf.length + value.length);
           merged.set(this._buf, 0);
           merged.set(value, this._buf.length);

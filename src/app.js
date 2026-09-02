@@ -6,6 +6,7 @@ import {
 import {Bootloader, padImage} from "./stm32.js";
 import {DEFAULT_PINS, Target} from "./target.js";
 import {describeDevice} from "./devices.js";
+import {StreamFormatter, encodeInput, hexdumpRow} from "./monitor.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -39,6 +40,18 @@ const els = {
   btnReleaseLines: $("btnReleaseLines"),
   btnPulseReset: $("btnPulseReset"),
   btnProbe: $("btnProbe"),
+  tabFlash: $("tabFlash"),
+  tabSerial: $("tabSerial"),
+  panelFlash: $("panelFlash"),
+  panelSerial: $("panelSerial"),
+  monPortState: $("monPortState"),
+  monPortText: $("monPortText"),
+  serialOut: $("serialOut"),
+  monInput: $("monInput"),
+  btnMonSend: $("btnMonSend"),
+  btnMonReset: $("btnMonReset"),
+  btnMonClear: $("btnMonClear"),
+  monStats: $("monStats"),
   btnResetSettings: $("btnResetSettings"),
   btnClearLog: $("btnClearLog"),
   log: $("log"),
@@ -46,6 +59,14 @@ const els = {
 
 const CONFIG_FIELDS = ["cfgBaud", "cfgParity", "cfgBase", "cfgAckTimeout", "cfgEraseTimeout", "cfgNrstLine", "cfgNrstInvert", "cfgBoot0Line", "cfgBoot0Invert", "cfgResetHold", "cfgBootDelay",];
 for (const id of CONFIG_FIELDS) els[id] = $(id);
+
+/*
+ * Monitor settings persist like the rest of the form, but are deliberately
+ * outside the Advanced reset: they sit in plain view on the Serial tab, so
+ * they cannot get stuck somewhere the user is not looking.
+ */
+const MONITOR_FIELDS = ["monBaud", "monFraming", "monLineEnding", "monEcho", "monTimestamps", "monHex", "monAutoscroll", "monSendHex",];
+for (const id of MONITOR_FIELDS) els[id] = $(id);
 
 const state = {
   io: null,
@@ -55,6 +76,11 @@ const state = {
   imageName: null,
   busy: false,
   abort: false,
+  tab: "flash",
+  /** Framing the port is currently open with, or null when closed. */
+  portSettings: null,
+  rxBytes: 0,
+  txBytes: 0,
 };
 
 class AbortedError extends Error {
@@ -114,7 +140,7 @@ function parseAddress(text) {
 
 function saveSettings() {
   const data = {};
-  for (const id of CONFIG_FIELDS) {
+  for (const id of [...CONFIG_FIELDS, ...MONITOR_FIELDS]) {
     const el = els[id];
     data[id] = el.type === "checkbox" ? el.checked : el.value;
   }
@@ -206,6 +232,7 @@ function setBusy(busy) {
   for (const id of ["btnAssertBoot0", "btnReleaseLines", "btnPulseReset", "btnProbe"]) {
     els[id].disabled = busy || !connected;
   }
+  syncMonitor();
 }
 
 function setPhase(text, pct = null) {
@@ -249,6 +276,170 @@ function crc32(bytes) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
+/* --------------------------------------------------------- serial monitor */
+
+/** Oldest lines are dropped past this; a chatty target would otherwise grow
+ *  the DOM without bound. */
+const MAX_MONITOR_LINES = 2000;
+
+/** Partial lines are held until the target sends more; this forces them out
+ *  once it goes quiet, so a prompt with no newline still appears. */
+const IDLE_FLUSH_MS = 150;
+
+const formatter = new StreamFormatter();
+let idleFlushTimer = null;
+
+const framingLabel = (parity) => (parity === "even" ? "8E1" : "8N1");
+
+function monitorSettings() {
+  return {
+    baudRate: Number(els.monBaud.value) || 115200,
+    parity: els.monFraming.value,
+  };
+}
+
+function flashSettings() {
+  return {
+    baudRate: Number(els.cfgBaud.value) || 115200,
+    parity: els.cfgParity.value,
+  };
+}
+
+/**
+ * Reopen the port only when the framing actually has to change. Web Serial
+ * cannot retune an open port, and the reopen toggles DTR/RTS, which resets
+ * the target - so this stays quiet when the settings already match.
+ */
+async function ensurePort(settings, why) {
+  if (!state.io) return;
+  const now = state.portSettings;
+  if (now && now.baudRate === settings.baudRate && now.parity === settings.parity) {
+    return;
+  }
+  log(`Reopening port at ${settings.baudRate} ${framingLabel(settings.parity)} for ${why}; the target resets`, "warn");
+  await state.io.reopen(settings);
+  state.portSettings = {...settings};
+  await state.target.idle();
+  await sleep(150);
+  state.io.flushInput();
+  updatePortPill();
+}
+
+function updatePortPill() {
+  const open = state.portSettings !== null;
+  els.monPortState.dataset.state = open ? "ok" : "idle";
+  els.monPortText.textContent = open ? `${state.portSettings.baudRate} ${framingLabel(state.portSettings.parity)}` : "Port closed";
+}
+
+function updateStats() {
+  els.monStats.textContent = `${state.rxBytes} B in, ${state.txBytes} B out`;
+}
+
+function appendMonitor(lines, kind) {
+  if (!lines.length) return;
+  const stamp = els.monTimestamps.checked ? `[${new Date().toLocaleTimeString([], {hour12: false})}] ` : "";
+  for (const text of lines) {
+    const el = document.createElement("span");
+    el.className = `line ${kind}`;
+    el.textContent = `${stamp}${text}\n`;
+    els.serialOut.appendChild(el);
+  }
+  while (els.serialOut.childElementCount > MAX_MONITOR_LINES) {
+    els.serialOut.removeChild(els.serialOut.firstChild);
+  }
+  if (els.monAutoscroll.checked) {
+    els.serialOut.scrollTop = els.serialOut.scrollHeight;
+  }
+}
+
+function handleIncoming(bytes) {
+  state.rxBytes += bytes.length;
+  appendMonitor(formatter.push(bytes), "rx");
+  updateStats();
+  clearTimeout(idleFlushTimer);
+  idleFlushTimer = setTimeout(() => appendMonitor(formatter.flush(), "rx"), IDLE_FLUSH_MS);
+}
+
+/**
+ * The monitor owns the byte stream only while its tab is open, a port exists
+ * and nothing else is driving the target. Anywhere else it must let go, or it
+ * would eat the bootloader's ACKs.
+ */
+function syncMonitor() {
+  const live = state.tab === "serial" && state.io !== null && !state.busy;
+  if (state.io) state.io.onData = live ? handleIncoming : null;
+  if (!live) {
+    clearTimeout(idleFlushTimer);
+    appendMonitor(formatter.flush(), "rx");
+  }
+  els.monInput.disabled = !live;
+  els.btnMonSend.disabled = !live;
+  els.btnMonReset.disabled = !live;
+}
+
+async function selectTab(name) {
+  state.tab = name;
+  for (const [tab, panel, key] of [[els.tabFlash, els.panelFlash, "flash"], [els.tabSerial, els.panelSerial, "serial"],]) {
+    tab.setAttribute("aria-selected", String(name === key));
+    panel.hidden = name !== key;
+  }
+  if (name === "serial" && state.io && !state.busy) {
+    try {
+      await ensurePort(monitorSettings(), "the serial monitor");
+    } catch (err) {
+      log(`Could not reopen the port: ${err.message}`, "error");
+    }
+  }
+  syncMonitor();
+}
+
+async function sendInput() {
+  if (!state.io || state.busy) return;
+  // An empty text line is still a line: it sends just the ending.
+  const text = els.monInput.value;
+  let bytes;
+  try {
+    bytes = encodeInput(text, {
+      hex: els.monSendHex.checked, lineEnding: els.monLineEnding.value,
+    });
+  } catch (err) {
+    appendMonitor([`send: ${err.message}`], "error");
+    return;
+  }
+  if (!bytes.length) return;
+  try {
+    await state.io.write(bytes);
+  } catch (err) {
+    appendMonitor([`send failed: ${err.message}`], "error");
+    return;
+  }
+  state.txBytes += bytes.length;
+  if (els.monEcho.checked) {
+    appendMonitor([els.monSendHex.checked ? hexdumpRow(bytes, 0) : text], "tx");
+  }
+  els.monInput.value = "";
+  updateStats();
+}
+
+async function resetTarget() {
+  if (!state.target || state.busy) return;
+  try {
+    state.target.pins = readPins();
+    await state.target.pulseReset(false);
+    appendMonitor(["-- target reset --"], "meta");
+  } catch (err) {
+    appendMonitor([`reset failed: ${err.message}`], "error");
+  }
+}
+
+function clearMonitor() {
+  els.serialOut.textContent = "";
+  formatter.reset();
+  state.rxBytes = 0;
+  state.txBytes = 0;
+  updateStats();
+}
+
 /* ------------------------------------------------------------ connection - */
 
 async function connect() {
@@ -259,6 +450,7 @@ async function connect() {
     await io.open({baudRate: cfg.baudRate, parity: cfg.parity});
 
     state.io = io;
+    state.portSettings = {baudRate: cfg.baudRate, parity: cfg.parity};
     state.target = new Target(io, cfg.pins, log);
     state.bl = new Bootloader(io, {
       log, ackTimeout: cfg.ackTimeout, eraseTimeout: cfg.eraseTimeout,
@@ -276,7 +468,10 @@ async function connect() {
     els.factBootloader.textContent = "not probed";
     setConnState("ok", `Connected @ ${cfg.baudRate} ${cfg.parity === "even" ? "8E1" : "8N1"}`);
     log(`Connected: ${describePort(port)} @ ${cfg.baudRate} baud`, "ok");
+    updatePortPill();
     setBusy(false);
+    // Picks up monitor framing if the user connected from the Serial tab.
+    if (state.tab === "serial") await selectTab("serial");
   } catch (err) {
     if (err && err.name === "NotFoundError") {
       log("Port selection cancelled");
@@ -289,6 +484,7 @@ async function connect() {
 
 async function disconnect() {
   if (!state.io) return;
+  state.io.onData = null;
   try {
     await state.io.close();
   } catch (err) {
@@ -297,6 +493,8 @@ async function disconnect() {
   state.io = null;
   state.target = null;
   state.bl = null;
+  state.portSettings = null;
+  updatePortPill();
   els.deviceFacts.hidden = true;
   setConnState("idle", "Not connected");
   log("Disconnected");
@@ -333,6 +531,7 @@ async function probe() {
   setBusy(true);
   try {
     setPhase("Probing target");
+    await ensurePort(flashSettings(), "the bootloader");
     await state.target.enterBootloader();
     await state.bl.sync();
     const info = await state.bl.get();
@@ -372,6 +571,10 @@ async function flash() {
 
   try {
     setPhase("Entering bootloader");
+    await ensurePort({
+      baudRate: cfg.baudRate,
+      parity: cfg.parity
+    }, "the bootloader");
     await state.target.enterBootloader();
     await state.bl.sync();
     const info = await state.bl.get();
@@ -448,6 +651,32 @@ function wire() {
     state.abort = true;
     log("Abort requested - finishing current block", "warn");
   });
+  els.tabFlash.addEventListener("click", () => selectTab("flash"));
+  els.tabSerial.addEventListener("click", () => selectTab("serial"));
+
+  els.btnMonSend.addEventListener("click", sendInput);
+  els.monInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendInput();
+    }
+  });
+  els.btnMonReset.addEventListener("click", resetTarget);
+  els.btnMonClear.addEventListener("click", clearMonitor);
+  els.monHex.addEventListener("change", () => {
+    appendMonitor(formatter.setHex(els.monHex.checked), "rx");
+  });
+  for (const id of ["monBaud", "monFraming"]) {
+    els[id].addEventListener("change", async () => {
+      if (state.tab !== "serial" || !state.io || state.busy) return;
+      try {
+        await ensurePort(monitorSettings(), "the serial monitor");
+      } catch (err) {
+        log(`Could not reopen the port: ${err.message}`, "error");
+      }
+    });
+  }
+
   els.btnResetSettings.addEventListener("click", resetSettings);
   els.btnClearLog.addEventListener("click", () => {
     els.log.textContent = "";
@@ -486,7 +715,7 @@ function wire() {
     loadFile(e.dataTransfer.files[0]);
   });
 
-  for (const id of [...CONFIG_FIELDS, "optErase", "optVerify", "optRun"]) {
+  for (const id of [...CONFIG_FIELDS, ...MONITOR_FIELDS, "optErase", "optVerify", "optRun"]) {
     els[id].addEventListener("change", saveSettings);
   }
 
@@ -510,6 +739,9 @@ function init() {
     log("Web Serial API not available in this browser", "error");
     return;
   }
+  selectTab("flash");
+  updatePortPill();
+  updateStats();
   setBusy(false);
   log("Ready. Connect the Blasher to begin.");
 }
