@@ -69,7 +69,24 @@
       <strong>This browser cannot talk to serial devices.</strong>
       Blasher needs the Web Serial API &mdash; use desktop Chrome, Edge or
       Opera over <code>https://</code> or <code>http://localhost</code>.
+      Everything below still works so you can see what the tool does; only
+      connecting to hardware is unavailable.
     </div>
+
+    <div id="bootFailed" class="banner error" hidden>
+      <strong>Blasher did not start.</strong>
+      The page loaded but its code did not run, which usually means this
+      browser is too old for it. Try the current version of Chrome or Edge on
+      a desktop.
+    </div>
+
+    <noscript>
+      <div class="banner error">
+        <strong>JavaScript is switched off.</strong>
+        Blasher runs entirely in the browser, so nothing on this page works
+        without it.
+      </div>
+    </noscript>
 
     <section class="card" id="cardDevice">
       <div class="card-head">
@@ -369,6 +386,29 @@
   </div>
 </footer>
 
+<!--
+  Deliberately a plain classic script in ES5, and deliberately not part of
+  app.js: this is the only code that still runs on an engine too old to parse
+  the modules, which is precisely when someone needs to be told why the page
+  is doing nothing. Both notices stay hidden in the markup and are revealed
+  from here, so a working browser cannot show them whatever happens to the
+  stylesheet.
+-->
+<script>
+  (function () {
+    if (!("serial" in navigator)) {
+      var unsupported = document.getElementById("unsupported");
+      if (unsupported) unsupported.hidden = false;
+    }
+
+    // app.js sets the flag once it has finished starting. If it never runs -
+    // unparseable, blocked, or a failed request - nothing else would say so.
+    setTimeout(function () {
+      var failed = document.getElementById("bootFailed");
+      if (failed && !window.__blasherReady) failed.hidden = false;
+    }, 3000);
+  })();
+</script>
 <script type="module" src="/src/app.js"></script>
 </body>
 </html>

@@ -83,6 +83,9 @@ const state = {
   txBytes: 0,
 };
 
+/** Fixed for the life of the page: the API is either there or it is not. */
+const WEB_SERIAL = isSupported();
+
 class AbortedError extends Error {
   constructor() {
     super("Aborted by user");
@@ -225,7 +228,7 @@ function setConnState(stateName, text) {
 function setBusy(busy) {
   state.busy = busy;
   const connected = state.io !== null;
-  els.btnConnect.disabled = busy || connected;
+  els.btnConnect.disabled = busy || connected || !WEB_SERIAL;
   els.btnDisconnect.disabled = busy || !connected;
   els.btnFlash.disabled = busy || !connected || !state.image;
   els.btnAbort.disabled = !busy;
@@ -716,7 +719,7 @@ function wire() {
     els[id].addEventListener("change", saveSettings);
   }
 
-  if (isSupported()) {
+  if (WEB_SERIAL) {
     navigator.serial.addEventListener("disconnect", (e) => {
       if (state.io && e.target === state.io.port) {
         log("Device unplugged", "error");
@@ -726,21 +729,31 @@ function wire() {
   }
 }
 
+/**
+ * Without Web Serial the page is still worth showing: both tabs, every control
+ * and all the settings render, so a visitor on the wrong browser can see what
+ * the tool does before going to find one that runs it. Only the paths that
+ * need a real port are closed off, by setBusy() via WEB_SERIAL.
+ */
 function init() {
   loadSettings();
   wire();
-  if (!isSupported()) {
-    els.unsupported.hidden = false;
-    els.btnConnect.disabled = true;
-    setConnState("error", "Web Serial unavailable");
-    log("Web Serial API not available in this browser", "error");
-    return;
-  }
   selectTab("flash");
   updatePortPill();
   updateStats();
   setBusy(false);
-  log("Ready. Connect the Blasher to begin.");
+
+  if (WEB_SERIAL) {
+    log("Ready. Connect the Blasher to begin.");
+  } else {
+    // The notice itself is revealed by the inline script in index.html, which
+    // runs even when this module cannot.
+    setConnState("error", "Web Serial unavailable");
+    log("Web Serial API not available in this browser. The interface is shown, but nothing can be connected.", "error");
+  }
+
+  // Tells the inline watchdog in index.html that the app came up.
+  window.__blasherReady = true;
 }
 
 init();

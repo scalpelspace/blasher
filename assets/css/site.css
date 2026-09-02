@@ -347,9 +347,18 @@ main {
   color: var(--text);
 }
 
+/*
+ * background-origin matters here for the same reason it does on
+ * button.primary: the button keeps its 1px border and only makes it
+ * transparent, so by default the gradient is sized to the padding box while
+ * being painted across the border box. That leaves the outermost pixel ring
+ * showing a smeared copy of the gradient's edge instead of the gradient
+ * itself. Sizing it to the border box makes the fill reach the real edge.
+ */
 .tab[aria-selected="true"],
 .tab[aria-selected="true"]:hover {
   background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
+  background-origin: border-box;
   border-color: transparent;
   color: #ffffff;
 }
