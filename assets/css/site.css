@@ -322,44 +322,60 @@ main {
 .tabs {
   display: flex;
   gap: 4px;
-  width: fit-content;
-  max-width: 100%;
+  /*
+   * A definite width, not fit-content: sized to content there is no free
+   * space for flex: 1 to distribute, so the two halves keep their label
+   * widths and the selected pill changes size as you switch. 360 divides
+   * into two whole 173px halves, and the outline is an inset shadow rather
+   * than a border so it stays out of the box model and cannot reintroduce
+   * fractional widths.
+   */
+  width: min(100%, 360px);
   margin: clamp(10px, 2vh, 20px) auto 6px;
   padding: 5px;
   background: var(--bg-raised);
-  border: 1px solid var(--border);
+  box-shadow: inset 0 0 0 1px var(--border);
   border-radius: 999px;
 }
 
+/*
+ * flex: 1 splits the track evenly, so the selected pill is the same size
+ * whichever tab it is on. Sized to content the two differ by the width of
+ * their labels, and the pill visibly resized and shifted on every switch.
+ *
+ * No border, following the parent site's gradient CTA. The base button rule
+ * has one, and merely making it transparent left 2px of the box belonging to
+ * a border that only complicated the gradient's edge; the padding below is
+ * 1px larger to keep the same outer size. A 1.5 line-height then lands the
+ * height on a whole 46px instead of 47.2, so the rounded ends sit on the
+ * pixel grid rather than being anti-aliased across it.
+ */
 .tab {
-  padding: 10px 28px;
+  flex: 1 1 0;
+  justify-content: center;
+  padding: 11px 28px;
   font-size: 1rem;
+  line-height: 1.5;
   font-weight: 600;
   letter-spacing: -0.01em;
   background: transparent;
-  border-color: transparent;
+  border: 0;
   color: var(--text-muted);
 }
 
 .tab:hover:not(:disabled) {
   background: var(--bg);
-  border-color: transparent;
   color: var(--text);
 }
 
 /*
- * background-origin matters here for the same reason it does on
- * button.primary: the button keeps its 1px border and only makes it
- * transparent, so by default the gradient is sized to the padding box while
- * being painted across the border box. That leaves the outermost pixel ring
- * showing a smeared copy of the gradient's edge instead of the gradient
- * itself. Sizing it to the border box makes the fill reach the real edge.
+ * No background-origin fix needed here, unlike button.primary: .tab drops the
+ * border entirely, so the padding box and the border box are the same and the
+ * gradient already reaches the real edge.
  */
 .tab[aria-selected="true"],
 .tab[aria-selected="true"]:hover {
   background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
-  background-origin: border-box;
-  border-color: transparent;
   color: #ffffff;
 }
 
@@ -870,15 +886,14 @@ input[type="number"] {
     margin-left: 0;
   }
 
-  /* Two 28px-padded tabs overflow a phone: split the row instead. */
+  /* Two 28px-padded tabs overflow a phone: let the track fill the row. */
   .tabs {
     width: 100%;
   }
 
+  /* Only the side padding needs relaxing; flex: 1 already splits the track. */
   .tab {
-    flex: 1 1 0;
-    justify-content: center;
-    padding: 10px 12px;
+    padding: 11px 12px;
   }
 
   button.big {
