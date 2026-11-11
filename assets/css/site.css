@@ -43,12 +43,8 @@
   --radius: 12px;
   --radius-lg: 16px;
   --container: 1040px;
-  /*
-   * The app column is narrower than the parent site's. These are forms, a
-   * progress bar and log output, not marketing prose; full width would put
-   * the flash controls uncomfortably far from the firmware panel.
-   */
-  --container-app: 860px;
+  /* The app column matches the parent site's width, same as the demo page. */
+  --container-app: 1040px;
 }
 
 @media (prefers-color-scheme: dark) {
