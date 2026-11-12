@@ -822,32 +822,11 @@ input[type="number"] {
 .site-footer {
   flex-shrink: 0;
   border-top: 1px solid var(--border);
-  margin-top: 40px;
+  margin-top: clamp(56px, 9vh, 88px);
   padding: 28px 0;
   font-size: 0.875rem;
   color: var(--text-faint);
-}
-
-.site-footer .container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px 24px;
-  flex-wrap: wrap;
-}
-
-.footer-links {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-
-.footer-links a {
-  color: var(--text-muted);
-}
-
-.footer-links a:hover {
-  color: var(--text);
+  text-align: center;
 }
 
 /* --- Responsive --------------------------------------------------------- */
